@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { PortableText } from '@portabletext/react'
 import MovieGallery from '@/components/MovieGallery'
 import VotingSystem from '@/components/VotingSystem'
-import DisqusComments from '@/components/DisqusComments' // Importa il componente Disqus
+import DisqusComments from '@/components/DisqusComments'
 
 const builder = imageUrlBuilder(client)
 function urlFor(source) {
@@ -24,7 +24,7 @@ async function getMovie(slug) {
     gallery,
     averageRating,
     ratingCount,
-    director->{
+    directors[]->{
       name,
       "slug": slug.current
     },
@@ -90,14 +90,26 @@ export default async function MoviePage({ params }) {
               initialCount={movie.ratingCount || 0} 
             />
 
-            {movie.director && (
+            {/* --- SEZIONE CORRETTA PER I REGISTI --- */}
+            {movie.directors && movie.directors.length > 0 && (
               <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-300">Regista</h3>
-                <Link href={`/directors/${movie.director.slug}`} className="text-lg text-yellow-500 hover:underline">
-                    {movie.director.name}
-                </Link>
+                <h3 className="text-lg font-semibold text-gray-300">
+                  {movie.directors.length > 1 ? 'Registi' : 'Regista'}
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-2 text-lg">
+                  {movie.directors.map((director, index) => (
+                    <span key={director.slug} className="flex items-center">
+                      <Link href={`/directors/${director.slug}`} className="text-yellow-500 hover:underline">
+                          {director.name}
+                      </Link>
+                      {/* Aggiunge una virgola se non è l'ultimo regista */}
+                      {index < movie.directors.length - 1 && <span className="text-gray-400 ml-2">,</span>}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
+            {/* ------------------------------------ */}
 
             <div className="prose prose-invert max-w-none text-gray-200 mb-6">
                 <h3 className="text-lg font-semibold text-gray-300">Trama</h3>
@@ -134,7 +146,6 @@ export default async function MoviePage({ params }) {
 
         <MovieGallery gallery={movie.gallery} />
         
-        {/* Sezione Commenti */}
         <DisqusComments movie={movie} />
 
         <div className="text-center mt-12">
