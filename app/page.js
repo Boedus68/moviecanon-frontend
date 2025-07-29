@@ -9,6 +9,7 @@ function urlFor(source) {
   return builder.image(source)
 }
 
+// --- FUNZIONE CORRETTA ---
 // Funzione per recuperare i dati dei film con ordinamento
 async function getMovies(sort = 'date_desc') {
   let orderClause = 'order(releaseYear desc)' // Ordinamento di default
@@ -18,17 +19,17 @@ async function getMovies(sort = 'date_desc') {
   } else if (sort === 'alpha_asc') {
     orderClause = 'order(title asc)'
   } else if (sort === 'random') {
-    // Per l'ordinamento random, non applichiamo un ordine nella query
-    orderClause = ''
+    orderClause = '' // Nessun ordinamento specifico nella query
   }
 
-  const query = `*[_type == "movie"] {
+  // La query è stata ristrutturata per essere sintatticamente corretta
+  const query = `*[_type == "movie"]{
     _id,
     title,
     "slug": slug.current,
     poster,
     releaseYear
-  } | ${orderClause}`
+  } ${orderClause ? `| ${orderClause}` : ''}`
   
   let movies = await client.fetch(query)
 
@@ -42,6 +43,7 @@ async function getMovies(sort = 'date_desc') {
 
   return movies
 }
+// -------------------------
 
 // La nostra pagina principale
 export default async function HomePage({ searchParams }) {
