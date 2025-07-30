@@ -11,16 +11,12 @@ const sanityClient = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 })
 
-// --- INTESTAZIONI CORS ---
-// Queste righe dicono al nostro sito di accettare richieste
-// solo dal dominio del nostro Sanity Studio.
 const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://moviecanon.sanity.studio',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-// Funzione per gestire le richieste "preflight" del browser
 export async function OPTIONS(request) {
   return new Response(null, { headers: corsHeaders })
 }
@@ -40,6 +36,10 @@ async function generateBiography(name, documentType) {
     body: JSON.stringify(payload),
   });
   const result = await response.json();
+  
+  // LOG DI DEBUG
+  console.log('Risposta da Gemini API:', JSON.stringify(result, null, 2));
+
   const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) throw new Error('La generazione della biografia non è riuscita.');
@@ -66,6 +66,10 @@ async function generateAndUploadImage(name, documentType) {
     body: JSON.stringify(payload),
   });
   const result = await response.json();
+
+  // LOG DI DEBUG
+  console.log('Risposta da Imagen API:', JSON.stringify(result, null, 2));
+
   const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
 
   if (!base64Data) throw new Error("La generazione dell'immagine non è riuscita.");
@@ -92,11 +96,9 @@ export async function POST(request) {
       generateAndUploadImage(name, documentType)
     ]);
 
-    // Aggiungiamo le intestazioni CORS alla risposta di successo
     return NextResponse.json({ biography, imageId }, { headers: corsHeaders })
   } catch (error) {
     console.error("Errore nell'API di generazione:", error)
-    // Aggiungiamo le intestazioni CORS anche alla risposta di errore
     return NextResponse.json(
         { message: error.message || "Errore interno del server" }, 
         { status: 500, headers: corsHeaders }
