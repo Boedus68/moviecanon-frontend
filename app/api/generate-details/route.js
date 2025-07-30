@@ -21,9 +21,9 @@ export async function OPTIONS(request) {
 }
 
 async function generateBiography(name, documentType) {
-  // ... (il codice di questa funzione rimane invariato)
   const typeText = documentType === 'director' ? 'regista' : 'attore/attrice'
   const prompt = `Scrivi una breve biografia enciclopedica, in italiano, per ${typeText} ${name}. Concentrati sulla sua carriera cinematografica, i film più importanti e il suo stile o i ruoli tipici. Massimo 150 parole.`
+  
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
   const apiKey = process.env.GOOGLE_AI_API_KEY
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -34,23 +34,33 @@ async function generateBiography(name, documentType) {
   return text.split('\n\n').map(p => ({_type: 'block', style: 'normal', children: [{_type: 'span', text: p}]}));
 }
 
-async function generateAndUploadImage(name, documentType) {
-    // ... (il codice di questa funzione rimane invariato)
-  const typeText = documentType === 'director' ? 'regista' : 'attore/attrice'
-  const prompt = `Un ritratto fotorealistico di alta qualità del ${typeText} cinematografico ${name}.`
-  const payload = { instances: [{ prompt }], parameters: { "sampleCount": 1} };
-  const apiKey = process.env.GOOGLE_AI_API_KEY
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  const result = await response.json();
-  const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
-  if (!base64Data) throw new Error("La generazione dell'immagine non è riuscita.");
-  const imageBuffer = Buffer.from(base64Data, 'base64');
-  const imageAsset = await sanityClient.assets.upload('image', imageBuffer, {filename: `${name.replace(/\s+/g, '-')}-ai.png`, contentType: 'image/png'});
+// --- NUOVA FUNZIONE PER PRENDERE L'IMMAGINE DA TMDB ---
+async function getAndUploadImageFromTMDB(name) {
+  const tmdbApiKey = process.env.TMDB_API_KEY;
+  if (!tmdbApiKey) throw new Error('Chiave API di TMDb non trovata.');
+
+  // 1. Cerca la persona per trovare il suo ID
+  const searchUrl = `https://api.themoviedb.org/3/search/person?api_key=${tmdbApiKey}&query=${encodeURIComponent(name)}&language=it-IT`;
+  const searchResponse = await fetch(searchUrl);
+  const searchData = await searchResponse.json();
+  
+  const person = searchData.results?.[0];
+  if (!person || !person.profile_path) {
+    throw new Error(`Nessuna immagine trovata su TMDb per ${name}.`);
+  }
+
+  // 2. Costruisci l'URL dell'immagine in alta qualità
+  const imageUrl = `https://image.tmdb.org/t/p/original${person.profile_path}`;
+
+  // 3. Carica l'immagine su Sanity direttamente dall'URL
+  const imageAsset = await sanityClient.assets.upload('image', await fetch(imageUrl), {
+    filename: `${name.replace(/\s+/g, '-')}-tmdb.jpg`,
+  });
+
   return imageAsset._id;
 }
 
-// --- LOGICA PRINCIPALE AGGIORNATA ---
+
 export async function POST(request) {
   try {
     const { documentId, name, documentType } = await request.json()
@@ -63,15 +73,28 @@ export async function POST(request) {
     let biography = null;
     let imageId = null;
 
-    // Genera la biografia. Se fallisce, l'errore bloccherà tutto.
-    biography = await generateBiography(name, documentType);
+    // Esegue le due operazioni in parallelo per ottimizzare i tempi
+    const results = await Promise.allSettled([
+        generateBiography(name, documentType),
+        getAndUploadImageFromTMDB(name)
+    ]);
 
-    // Tenta di generare l'immagine, ma non bloccare tutto se fallisce.
-    try {
-      imageId = await generateAndUploadImage(name, documentType);
-    } catch (imageError) {
-      console.error(`[API] Generazione immagine per ${name} fallita, ma la biografia è stata creata:`, imageError.message);
-      // L'imageId rimarrà null, ma non lanciamo un errore.
+    const biographyResult = results[0];
+    const imageResult = results[1];
+
+    if (biographyResult.status === 'fulfilled') {
+        biography = biographyResult.value;
+    } else {
+        console.error(`[API] Generazione biografia fallita per ${name}:`, biographyResult.reason.message);
+        // Se la biografia fallisce, blocchiamo tutto perché è essenziale
+        throw new Error(biographyResult.reason.message);
+    }
+
+    if (imageResult.status === 'fulfilled') {
+        imageId = imageResult.value;
+    } else {
+        console.error(`[API] Recupero immagine fallito per ${name}:`, imageResult.reason.message);
+        // Non blocchiamo, l'immagine è opzionale
     }
 
     console.log(`[API] Processo per ${name} completato.`);
