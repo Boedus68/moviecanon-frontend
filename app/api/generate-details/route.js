@@ -11,13 +11,27 @@ const sanityClient = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 })
 
+// --- INTESTAZIONI CORS ---
+// Queste righe dicono al nostro sito di accettare richieste
+// solo dal dominio del nostro Sanity Studio.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://moviecanon.sanity.studio',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+// Funzione per gestire le richieste "preflight" del browser
+export async function OPTIONS(request) {
+  return new Response(null, { headers: corsHeaders })
+}
+
 // Funzione per generare la biografia con Gemini
 async function generateBiography(name, documentType) {
   const typeText = documentType === 'director' ? 'regista' : 'attore/attrice'
   const prompt = `Scrivi una breve biografia enciclopedica, in italiano, per ${typeText} ${name}. Concentrati sulla sua carriera cinematografica, i film più importanti e il suo stile o i ruoli tipici. Massimo 150 parole.`
   
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
-  const apiKey = "" // Lasciare vuoto, sarà gestito dall'ambiente
+  const apiKey = "" // Lasciare vuoto
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
@@ -30,7 +44,6 @@ async function generateBiography(name, documentType) {
 
   if (!text) throw new Error('La generazione della biografia non è riuscita.');
 
-  // Converte il testo semplice in formato Portable Text di Sanity
   return text.split('\n\n').map(paragraph => ({
     _type: 'block',
     style: 'normal',
@@ -57,7 +70,6 @@ async function generateAndUploadImage(name, documentType) {
 
   if (!base64Data) throw new Error("La generazione dell'immagine non è riuscita.");
 
-  // Carica l'immagine su Sanity
   const imageBuffer = Buffer.from(base64Data, 'base64');
   const imageAsset = await sanityClient.assets.upload('image', imageBuffer, {
     filename: `${name.replace(/\s+/g, '-')}-ai.png`,
@@ -72,18 +84,22 @@ export async function POST(request) {
   try {
     const { documentId, name, documentType } = await request.json()
     if (!documentId || !name || !documentType) {
-      return NextResponse.json({ message: 'Dati mancanti' }, { status: 400 })
+      return NextResponse.json({ message: 'Dati mancanti' }, { status: 400, headers: corsHeaders })
     }
 
-    // Esegue le due generazioni in parallelo per risparmiare tempo
     const [biography, imageId] = await Promise.all([
       generateBiography(name, documentType),
       generateAndUploadImage(name, documentType)
     ]);
 
-    return NextResponse.json({ biography, imageId })
+    // Aggiungiamo le intestazioni CORS alla risposta di successo
+    return NextResponse.json({ biography, imageId }, { headers: corsHeaders })
   } catch (error) {
     console.error("Errore nell'API di generazione:", error)
-    return NextResponse.json({ message: error.message || "Errore interno del server" }, { status: 500 })
+    // Aggiungiamo le intestazioni CORS anche alla risposta di errore
+    return NextResponse.json(
+        { message: error.message || "Errore interno del server" }, 
+        { status: 500, headers: corsHeaders }
+    )
   }
 }
