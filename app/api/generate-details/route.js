@@ -34,7 +34,7 @@ async function generateBiography(name, documentType) {
   return text.split('\n\n').map(p => ({_type: 'block', style: 'normal', children: [{_type: 'span', text: p}]}));
 }
 
-// --- NUOVA FUNZIONE PER PRENDERE L'IMMAGINE DA TMDB ---
+// --- FUNZIONE AGGIORNATA PER GESTIRE MEGLIO LE IMMAGINI ---
 async function getAndUploadImageFromTMDB(name) {
   const tmdbApiKey = process.env.TMDB_API_KEY;
   if (!tmdbApiKey) throw new Error('Chiave API di TMDb non trovata.');
@@ -52,8 +52,15 @@ async function getAndUploadImageFromTMDB(name) {
   // 2. Costruisci l'URL dell'immagine in alta qualità
   const imageUrl = `https://image.tmdb.org/t/p/original${person.profile_path}`;
 
-  // 3. Carica l'immagine su Sanity direttamente dall'URL
-  const imageAsset = await sanityClient.assets.upload('image', await fetch(imageUrl), {
+  // 3. Scarica l'immagine in un buffer prima di inviarla a Sanity
+  const imageResponse = await fetch(imageUrl);
+  if (!imageResponse.ok) {
+    throw new Error(`Impossibile scaricare l'immagine da TMDb. Status: ${imageResponse.status}`);
+  }
+  const imageBuffer = await imageResponse.arrayBuffer();
+
+  // 4. Carica l'immagine su Sanity dal buffer
+  const imageAsset = await sanityClient.assets.upload('image', Buffer.from(imageBuffer), {
     filename: `${name.replace(/\s+/g, '-')}-tmdb.jpg`,
   });
 
@@ -73,7 +80,6 @@ export async function POST(request) {
     let biography = null;
     let imageId = null;
 
-    // Esegue le due operazioni in parallelo per ottimizzare i tempi
     const results = await Promise.allSettled([
         generateBiography(name, documentType),
         getAndUploadImageFromTMDB(name)
@@ -86,7 +92,6 @@ export async function POST(request) {
         biography = biographyResult.value;
     } else {
         console.error(`[API] Generazione biografia fallita per ${name}:`, biographyResult.reason.message);
-        // Se la biografia fallisce, blocchiamo tutto perché è essenziale
         throw new Error(biographyResult.reason.message);
     }
 
@@ -94,7 +99,6 @@ export async function POST(request) {
         imageId = imageResult.value;
     } else {
         console.error(`[API] Recupero immagine fallito per ${name}:`, imageResult.reason.message);
-        // Non blocchiamo, l'immagine è opzionale
     }
 
     console.log(`[API] Processo per ${name} completato.`);
