@@ -27,7 +27,9 @@ async function generateBiography(name, documentType) {
   const prompt = `Scrivi una breve biografia enciclopedica, in italiano, per ${typeText} ${name}. Concentrati sulla sua carriera cinematografica, i film più importanti e il suo stile o i ruoli tipici. Massimo 150 parole.`
   
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
-  const apiKey = "" // Lasciare vuoto
+  // --- MODIFICA ---
+  // Ora usiamo la chiave API dalle variabili d'ambiente
+  const apiKey = process.env.GOOGLE_AI_API_KEY
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
@@ -37,7 +39,6 @@ async function generateBiography(name, documentType) {
   });
   const result = await response.json();
   
-  // LOG DI DEBUG
   console.log('Risposta da Gemini API:', JSON.stringify(result, null, 2));
 
   const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -57,7 +58,9 @@ async function generateAndUploadImage(name, documentType) {
   const prompt = `Un ritratto artistico e stilizzato a carboncino del ${typeText} cinematografico ${name}.`
 
   const payload = { instances: [{ prompt }], parameters: { "sampleCount": 1} };
-  const apiKey = "" // Lasciare vuoto
+  // --- MODIFICA ---
+  // Ora usiamo la chiave API dalle variabili d'ambiente
+  const apiKey = process.env.GOOGLE_AI_API_KEY
   const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
   
   const response = await fetch(url, {
@@ -67,7 +70,6 @@ async function generateAndUploadImage(name, documentType) {
   });
   const result = await response.json();
 
-  // LOG DI DEBUG
   console.log('Risposta da Imagen API:', JSON.stringify(result, null, 2));
 
   const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
