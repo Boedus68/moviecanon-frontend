@@ -27,8 +27,6 @@ async function generateBiography(name, documentType) {
   const prompt = `Scrivi una breve biografia enciclopedica, in italiano, per ${typeText} ${name}. Concentrati sulla sua carriera cinematografica, i film più importanti e il suo stile o i ruoli tipici. Massimo 150 parole.`
   
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
-  // --- MODIFICA ---
-  // Ora usiamo la chiave API dalle variabili d'ambiente
   const apiKey = process.env.GOOGLE_AI_API_KEY
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
@@ -39,8 +37,6 @@ async function generateBiography(name, documentType) {
   });
   const result = await response.json();
   
-  console.log('Risposta da Gemini API:', JSON.stringify(result, null, 2));
-
   const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) throw new Error('La generazione della biografia non è riuscita.');
@@ -55,11 +51,11 @@ async function generateBiography(name, documentType) {
 // Funzione per generare l'immagine con Imagen e caricarla su Sanity
 async function generateAndUploadImage(name, documentType) {
   const typeText = documentType === 'director' ? 'regista' : 'attore/attrice'
-  const prompt = `Un ritratto artistico e stilizzato a carboncino del ${typeText} cinematografico ${name}.`
+  // --- PROMPT MODIFICATO ---
+  // Chiediamo un ritratto fotorealistico per una maggiore accuratezza
+  const prompt = `Un ritratto fotorealistico di alta qualità del ${typeText} cinematografico ${name}.`
 
   const payload = { instances: [{ prompt }], parameters: { "sampleCount": 1} };
-  // --- MODIFICA ---
-  // Ora usiamo la chiave API dalle variabili d'ambiente
   const apiKey = process.env.GOOGLE_AI_API_KEY
   const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
   
@@ -69,8 +65,6 @@ async function generateAndUploadImage(name, documentType) {
     body: JSON.stringify(payload),
   });
   const result = await response.json();
-
-  console.log('Risposta da Imagen API:', JSON.stringify(result, null, 2));
 
   const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
 
