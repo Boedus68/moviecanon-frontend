@@ -13,6 +13,7 @@ function urlFor(source) {
 }
 
 async function getMovie(slug) {
+  // Query aggiornata per recuperare anche la foto di attori e registi
   const query = `*[_type == "movie" && slug.current == $slug][0]{
     _id,
     title,
@@ -26,7 +27,8 @@ async function getMovie(slug) {
     ratingCount,
     directors[]->{
       name,
-      "slug": slug.current
+      "slug": slug.current,
+      photo // Aggiunto campo foto
     },
     genres[]->{
       name,
@@ -34,7 +36,8 @@ async function getMovie(slug) {
     },
     actors[]->{
       name,
-      "slug": slug.current
+      "slug": slug.current,
+      photo // Aggiunto campo foto
     }
   }`
 
@@ -90,44 +93,56 @@ export default async function MoviePage({ params }) {
               initialCount={movie.ratingCount || 0} 
             />
 
-            {/* --- SEZIONE CORRETTA PER I REGISTI --- */}
+            {/* --- SEZIONE REGISTI CON FOTO --- */}
             {movie.directors && movie.directors.length > 0 && (
               <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-300">
+                <h3 className="text-lg font-semibold text-gray-300 mb-2">
                   {movie.directors.length > 1 ? 'Registi' : 'Regista'}
                 </h3>
-                <div className="flex flex-wrap items-center gap-x-2 text-lg">
-                  {movie.directors.map((director, index) => (
-                    <span key={director.slug} className="flex items-center">
-                      <Link href={`/directors/${director.slug}`} className="text-yellow-500 hover:underline">
-                          {director.name}
-                      </Link>
-                      {/* Aggiunge una virgola se non è l'ultimo regista */}
-                      {index < movie.directors.length - 1 && <span className="text-gray-400 ml-2">,</span>}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* ------------------------------------ */}
-
-            <div className="prose prose-invert max-w-none text-gray-200 mb-6">
-                <h3 className="text-lg font-semibold text-gray-300">Trama</h3>
-                {movie.plot ? <PortableText value={movie.plot} /> : <p>Trama non disponibile.</p>}
-            </div>
-
-            {movie.actors && movie.actors.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-300 mb-2">Attori Principali</h3>
-                <div className="flex flex-wrap gap-2">
-                  {movie.actors.map((actor) => (
-                    <Link key={actor.slug} href={`/actors/${actor.slug}`} className="bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-yellow-500 hover:text-gray-900 transition-colors">
-                        {actor.name}
+                <div className="flex flex-col gap-2">
+                  {movie.directors.map((director) => (
+                    <Link key={director.slug} href={`/directors/${director.slug}`} className="flex items-center gap-3 text-lg text-yellow-500 hover:underline">
+                      {director.photo && (
+                        <img 
+                          src={urlFor(director.photo).width(40).height(40).url()}
+                          alt={`Foto di ${director.name}`}
+                          className="w-10 h-10 rounded-full object-cover bg-gray-700"
+                        />
+                      )}
+                      <span>{director.name}</span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
+            {/* ----------------------------- */}
+
+            <div className="prose prose-invert max-w-none text-gray-200 my-6">
+                <h3 className="text-lg font-semibold text-gray-300">Trama</h3>
+                {movie.plot ? <PortableText value={movie.plot} /> : <p>Trama non disponibile.</p>}
+            </div>
+
+            {/* --- SEZIONE ATTORI CON FOTO --- */}
+            {movie.actors && movie.actors.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-300 mb-2">Attori Principali</h3>
+                <div className="flex flex-wrap gap-3">
+                  {movie.actors.map((actor) => (
+                    <Link key={actor.slug} href={`/actors/${actor.slug}`} className="flex items-center gap-2 bg-gray-800 text-gray-300 pr-3 rounded-full text-sm hover:bg-yellow-500 hover:text-gray-900 transition-colors">
+                        {actor.photo && (
+                            <img 
+                                src={urlFor(actor.photo).width(32).height(32).url()}
+                                alt={`Foto di ${actor.name}`}
+                                className="w-8 h-8 rounded-full object-cover bg-gray-700"
+                            />
+                        )}
+                        <span>{actor.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* --------------------------- */}
 
             {movie.genres && movie.genres.length > 0 && (
               <div className="mt-6">
