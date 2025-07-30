@@ -3,26 +3,22 @@ import { client } from '@/lib/sanity.client'
 import imageUrlBuilder from '@sanity/image-url'
 import Link from 'next/link'
 
-// Funzione per ottenere l'URL dell'immagine da Sanity
 const builder = imageUrlBuilder(client)
 function urlFor(source) {
   return builder.image(source)
 }
 
-// --- FUNZIONE CORRETTA ---
-// Funzione per recuperare i dati dei film con ordinamento
 async function getMovies(sort = 'date_desc') {
-  let orderClause = 'order(releaseYear desc)' // Ordinamento di default
+  let orderClause = 'order(releaseYear desc)'
 
   if (sort === 'date_asc') {
     orderClause = 'order(releaseYear asc)'
   } else if (sort === 'alpha_asc') {
     orderClause = 'order(title asc)'
   } else if (sort === 'random') {
-    orderClause = '' // Nessun ordinamento specifico nella query
+    orderClause = ''
   }
 
-  // La query è stata ristrutturata per essere sintatticamente corretta
   const query = `*[_type == "movie"]{
     _id,
     title,
@@ -33,7 +29,6 @@ async function getMovies(sort = 'date_desc') {
   
   let movies = await client.fetch(query)
 
-  // Se l'ordinamento è random, mescoliamo l'array qui
   if (sort === 'random') {
     for (let i = movies.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -43,14 +38,11 @@ async function getMovies(sort = 'date_desc') {
 
   return movies
 }
-// -------------------------
 
-// La nostra pagina principale
 export default async function HomePage({ searchParams }) {
   const sort = searchParams.sort || 'date_desc'
   const movies = await getMovies(sort)
 
-  // Funzione per creare i link di ordinamento con stile attivo
   const SortLink = ({ sortValue, children }) => (
     <Link 
       href={sortValue === 'date_desc' ? '/' : `/?sort=${sortValue}`}
@@ -68,8 +60,7 @@ export default async function HomePage({ searchParams }) {
           <p className="text-lg text-gray-300 mt-2">The Ultimate Movie Ranking</p>
         </header>
 
-        {/* Controlli di Ordinamento */}
-        <div className="flex flex-wrap justify-center items-center gap-2 md:gap-4 mb-12 p-4 bg-gray-800 rounded-lg">
+        <div className="flex flex-wrap justify-center items-center gap-2 md:gap-4 mb-8 p-4 bg-gray-800 rounded-lg">
           <SortLink sortValue="date_desc">Più Recenti</SortLink>
           <SortLink sortValue="date_asc">Meno Recenti</SortLink>
           <SortLink sortValue="alpha_asc">Ordine Alfabetico</SortLink>
@@ -80,6 +71,17 @@ export default async function HomePage({ searchParams }) {
             Mi sento fortunato
           </Link>
         </div>
+
+        {/* --- NUOVA SEZIONE LINK INDICI --- */}
+        <div className="flex justify-center gap-6 mb-12">
+          <Link href="/directors" className="text-yellow-400 hover:text-yellow-300 transition-colors font-semibold text-lg">
+            Indice Registi
+          </Link>
+          <Link href="/actors" className="text-yellow-400 hover:text-yellow-300 transition-colors font-semibold text-lg">
+            Indice Attori
+          </Link>
+        </div>
+        {/* ---------------------------------- */}
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {movies.map((movie) => (
