@@ -23,6 +23,7 @@ export async function OPTIONS(request) {
 
 // Funzione per generare la biografia con Gemini
 async function generateBiography(name, documentType) {
+  console.log(`[AI] Avvio generazione biografia per: ${name}`);
   const typeText = documentType === 'director' ? 'regista' : 'attore/attrice'
   const prompt = `Scrivi una breve biografia enciclopedica, in italiano, per ${typeText} ${name}. Concentrati sulla sua carriera cinematografica, i film più importanti e il suo stile o i ruoli tipici. Massimo 150 parole.`
   
@@ -36,11 +37,17 @@ async function generateBiography(name, documentType) {
     body: JSON.stringify(payload),
   });
   const result = await response.json();
+  console.log(`[AI] Risposta da Gemini API ricevuta.`);
   
+  if (result.error) {
+    console.error('[AI] Errore da Gemini API:', result.error.message);
+    throw new Error('La generazione della biografia non è riuscita a causa di un errore API.');
+  }
+
   const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) throw new Error('La generazione della biografia non è riuscita.');
-
+  if (!text) throw new Error('La generazione della biografia non è riuscita (nessun testo restituito).');
+  
+  console.log(`[AI] Generazione biografia completata.`);
   return text.split('\n\n').map(paragraph => ({
     _type: 'block',
     style: 'normal',
@@ -50,9 +57,8 @@ async function generateBiography(name, documentType) {
 
 // Funzione per generare l'immagine con Imagen e caricarla su Sanity
 async function generateAndUploadImage(name, documentType) {
+  console.log(`[AI] Avvio generazione immagine per: ${name}`);
   const typeText = documentType === 'director' ? 'regista' : 'attore/attrice'
-  // --- PROMPT MODIFICATO ---
-  // Chiediamo un ritratto fotorealistico per una maggiore accuratezza
   const prompt = `Un ritratto fotorealistico di alta qualità del ${typeText} cinematografico ${name}.`
 
   const payload = { instances: [{ prompt }], parameters: { "sampleCount": 1} };
@@ -65,16 +71,23 @@ async function generateAndUploadImage(name, documentType) {
     body: JSON.stringify(payload),
   });
   const result = await response.json();
+  console.log(`[AI] Risposta da Imagen API ricevuta.`);
+
+  if (result.error) {
+    console.error('[AI] Errore da Imagen API:', result.error.message);
+    throw new Error("La generazione dell'immagine non è riuscita a causa di un errore API.");
+  }
 
   const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
+  if (!base64Data) throw new Error("La generazione dell'immagine non è riuscita (nessuna immagine restituita).");
 
-  if (!base64Data) throw new Error("La generazione dell'immagine non è riuscita.");
-
+  console.log(`[AI] Generazione immagine completata, avvio upload su Sanity...`);
   const imageBuffer = Buffer.from(base64Data, 'base64');
   const imageAsset = await sanityClient.assets.upload('image', imageBuffer, {
     filename: `${name.replace(/\s+/g, '-')}-ai.png`,
     contentType: 'image/png'
   });
+  console.log(`[AI] Upload su Sanity completato.`);
 
   return imageAsset._id;
 }
@@ -87,14 +100,15 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Dati mancanti' }, { status: 400, headers: corsHeaders })
     }
 
-    const [biography, imageId] = await Promise.all([
-      generateBiography(name, documentType),
-      generateAndUploadImage(name, documentType)
-    ]);
+    // ESECUZIONE IN SEQUENZA PER EVITARE TIMEOUT
+    console.log(`[API] Inizio processo per ${name}`);
+    const biography = await generateBiography(name, documentType);
+    const imageId = await generateAndUploadImage(name, documentType);
+    console.log(`[API] Processo per ${name} completato con successo.`);
 
     return NextResponse.json({ biography, imageId }, { headers: corsHeaders })
   } catch (error) {
-    console.error("Errore nell'API di generazione:", error)
+    console.error("[API] Errore grave nell'API di generazione:", error.message)
     return NextResponse.json(
         { message: error.message || "Errore interno del server" }, 
         { status: 500, headers: corsHeaders }
