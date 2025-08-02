@@ -2,6 +2,7 @@
 import { client } from '@/lib/sanity.client'
 import imageUrlBuilder from '@sanity/image-url'
 import Link from 'next/link'
+import SearchBar from '@/components/SearchBar' // Importa la barra di ricerca
 
 const builder = imageUrlBuilder(client)
 function urlFor(source) {
@@ -10,23 +11,11 @@ function urlFor(source) {
 
 async function getMovies(sort = 'date_desc') {
   let orderClause = 'order(releaseYear desc)'
+  if (sort === 'date_asc') orderClause = 'order(releaseYear asc)'
+  else if (sort === 'alpha_asc') orderClause = 'order(title asc)'
+  else if (sort === 'random') orderClause = ''
 
-  if (sort === 'date_asc') {
-    orderClause = 'order(releaseYear asc)'
-  } else if (sort === 'alpha_asc') {
-    orderClause = 'order(title asc)'
-  } else if (sort === 'random') {
-    orderClause = ''
-  }
-
-  const query = `*[_type == "movie"]{
-    _id,
-    title,
-    "slug": slug.current,
-    poster,
-    releaseYear
-  } ${orderClause ? `| ${orderClause}` : ''}`
-  
+  const query = `*[_type == "movie"]{_id, title, "slug": slug.current, poster, releaseYear} ${orderClause ? `| ${orderClause}` : ''}`
   let movies = await client.fetch(query)
 
   if (sort === 'random') {
@@ -35,7 +24,6 @@ async function getMovies(sort = 'date_desc') {
       [movies[i], movies[j]] = [movies[j], movies[i]];
     }
   }
-
   return movies
 }
 
@@ -60,6 +48,10 @@ export default async function HomePage({ searchParams }) {
           <p className="text-lg text-gray-300 mt-2">The Ultimate Movie Ranking</p>
         </header>
 
+        {/* --- NUOVA BARRA DI RICERCA --- */}
+        <SearchBar />
+        {/* ----------------------------- */}
+
         <div className="flex flex-wrap justify-center items-center gap-2 md:gap-4 mb-8 p-4 bg-gray-800 rounded-lg">
           <SortLink sortValue="date_desc">Più Recenti</SortLink>
           <SortLink sortValue="date_asc">Meno Recenti</SortLink>
@@ -72,7 +64,6 @@ export default async function HomePage({ searchParams }) {
           </Link>
         </div>
 
-        {/* --- NUOVA SEZIONE LINK INDICI --- */}
         <div className="flex justify-center gap-6 mb-12">
           <Link href="/directors" className="text-yellow-400 hover:text-yellow-300 transition-colors font-semibold text-lg">
             Indice Registi
@@ -81,24 +72,13 @@ export default async function HomePage({ searchParams }) {
             Indice Attori
           </Link>
         </div>
-        {/* ---------------------------------- */}
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {movies.map((movie) => (
             <div key={movie._id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-yellow-400/20 transition-shadow duration-300 group">
               <Link href={`/movies/${movie.slug}`}>
                 <div className="relative">
-                  {movie.poster ? (
-                    <img
-                      src={urlFor(movie.poster).width(400).height(600).url()}
-                      alt={`Poster for ${movie.title}`}
-                      className="w-full h-auto object-cover transform group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full aspect-[2/3] bg-gray-700 flex items-center justify-center">
-                      <span>No Poster</span>
-                    </div>
-                  )}
+                  {movie.poster && <img src={urlFor(movie.poster).width(400).height(600).url()} alt={`Poster for ${movie.title}`} className="w-full h-auto object-cover transform group-hover:scale-105 transition-transform duration-300"/>}
                 </div>
                 <div className="p-4">
                   <h2 className="text-lg font-semibold truncate">{movie.title}</h2>

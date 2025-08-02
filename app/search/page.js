@@ -1,0 +1,128 @@
+// app/search/page.js
+import { client } from '@/lib/sanity.client'
+import imageUrlBuilder from '@sanity/image-url'
+import Link from 'next/link'
+import SearchBar from '@/components/SearchBar' // Riutilizziamo la barra di ricerca
+
+const builder = imageUrlBuilder(client)
+function urlFor(source) {
+  return builder.image(source)
+}
+
+// Funzione per eseguire la ricerca su Sanity
+async function performSearch(query) {
+  if (!query) return { movies: [], directors: [], actors: [] };
+
+  // Usiamo GROQ per una ricerca potente e flessibile
+  const searchQuery = `
+  {
+    "movies": *[_type == "movie" && (
+      title match $query || 
+      pt::text(plot) match $query
+    )]{
+      _id,
+      title,
+      "slug": slug.current,
+      poster,
+      releaseYear
+    },
+    "directors": *[_type == "director" && name match $query]{
+      _id,
+      name,
+      "slug": slug.current,
+      photo
+    },
+    "actors": *[_type == "actor" && name match $query]{
+      _id,
+      name,
+      "slug": slug.current,
+      photo
+    }
+  }`
+
+  const params = { query: `${query}*` }; // Aggiungiamo un wildcard per ricerche parziali
+  const results = await client.fetch(searchQuery, params);
+  return results;
+}
+
+export default async function SearchPage({ searchParams }) {
+  const query = searchParams.q || ''
+  const results = await performSearch(query)
+
+  const hasResults = results.movies.length > 0 || results.directors.length > 0 || results.actors.length > 0;
+
+  return (
+    <main className="bg-gray-900 text-white min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        <header className="text-center mb-8">
+          <Link href="/">
+            <h1 className="text-5xl font-bold text-yellow-400 hover:text-yellow-300 transition-colors">Movie Canon</h1>
+          </Link>
+        </header>
+        
+        <SearchBar />
+
+        <div className="mt-12">
+          {query && (
+            <h2 className="text-3xl font-bold mb-8">
+              Risultati della ricerca per: <span className="text-yellow-400">"{query}"</span>
+            </h2>
+          )}
+
+          {!hasResults && query && (
+            <p className="text-center text-xl text-gray-400">Nessun risultato trovato.</p>
+          )}
+
+          {/* Sezione Film */}
+          {results.movies.length > 0 && (
+            <section className="mb-12">
+              <h3 className="text-2xl font-semibold border-b-2 border-gray-700 pb-2 mb-6">Film</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {results.movies.map((movie) => (
+                  <div key={movie._id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-yellow-400/20 transition-shadow duration-300 group">
+                    <Link href={`/movies/${movie.slug}`}>
+                      {movie.poster && <img src={urlFor(movie.poster).width(300).height(450).url()} alt={`Poster for ${movie.title}`} className="w-full h-auto object-cover"/>}
+                      <div className="p-3"><h4 className="font-semibold truncate">{movie.title}</h4><p className="text-sm text-gray-400">{movie.releaseYear}</p></div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Sezione Registi */}
+          {results.directors.length > 0 && (
+            <section className="mb-12">
+              <h3 className="text-2xl font-semibold border-b-2 border-gray-700 pb-2 mb-6">Registi</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {results.directors.map((director) => (
+                  <Link key={director._id} href={`/directors/${director.slug}`} className="text-center group">
+                    {director.photo && <img src={urlFor(director.photo).width(150).height(150).url()} alt={`Foto di ${director.name}`} className="w-24 h-24 rounded-full object-cover mx-auto mb-2 border-2 border-transparent group-hover:border-yellow-400 transition-all"/>}
+                    <h4 className="font-semibold group-hover:text-yellow-400 transition-colors">{director.name}</h4>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Sezione Attori */}
+          {results.actors.length > 0 && (
+            <section>
+              <h3 className="text-2xl font-semibold border-b-2 border-gray-700 pb-2 mb-6">Attori</h3>
+               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {results.actors.map((actor) => (
+                  <Link key={actor._id} href={`/actors/${actor.slug}`} className="text-center group">
+                    {actor.photo && <img src={urlFor(actor.photo).width(150).height(150).url()} alt={`Foto di ${actor.name}`} className="w-24 h-24 rounded-full object-cover mx-auto mb-2 border-2 border-transparent group-hover:border-yellow-400 transition-all"/>}
+                    <h4 className="font-semibold group-hover:text-yellow-400 transition-colors">{actor.name}</h4>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
+
+export const revalidate = 0
