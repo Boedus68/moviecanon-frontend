@@ -10,6 +10,7 @@ function urlFor(source) {
 }
 
 async function getDirectors() {
+  // eslint-disable-next-line react/no-unescaped-entities
   const query = `*[_type == "director"] {"movieCount": count(*[_type == "movie" && references(^._id)]), ...} | order(movieCount desc) [movieCount >= 1]`
   const directors = await client.fetch(query)
   return directors

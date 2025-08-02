@@ -12,6 +12,7 @@ function urlFor(source) {
 
 async function performSearch(query) {
   if (!query) return { movies: [], directors: [], actors: [] };
+  // eslint-disable-next-line react/no-unescaped-entities
   const searchQuery = `{ "movies": *[_type == "movie" && (title match $query || pt::text(plot) match $query)]{_id, title, "slug": slug.current, poster, releaseYear}, "directors": *[_type == "director" && name match $query]{_id, name, "slug": slug.current, photo}, "actors": *[_type == "actor" && name match $query]{_id, name, "slug": slug.current, photo}}`
   const params = { query: `${query}*` };
   const results = await client.fetch(searchQuery, params);

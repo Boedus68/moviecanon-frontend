@@ -11,6 +11,7 @@ function urlFor(source) {
 }
 
 async function getActorData(slug) {
+  // eslint-disable-next-line react/no-unescaped-entities
   const query = `*[_type == "actor" && slug.current == $slug][0]{name, photo, biography, "movies": *[_type == "movie" && references(^._id)] | order(releaseYear desc) {_id, title, "slug": slug.current, poster, releaseYear}}`
   const data = await client.fetch(query, { slug })
   return data

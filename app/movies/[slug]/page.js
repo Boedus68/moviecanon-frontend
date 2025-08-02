@@ -14,6 +14,7 @@ function urlFor(source) {
 }
 
 async function getMovie(slug) {
+  // eslint-disable-next-line react/no-unescaped-entities
   const query = `*[_type == "movie" && slug.current == $slug][0]{_id, title, releaseYear, poster, plot, "slug": slug.current, affiliateLink, gallery, averageRating, ratingCount, directors[]->{name, "slug": slug.current, photo}, genres[]->{name, "slug": slug.current}, actors[]->{name, "slug": slug.current, photo}}`
   const movie = await client.fetch(query, { slug })
   return movie
