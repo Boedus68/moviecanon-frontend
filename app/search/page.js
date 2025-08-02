@@ -42,8 +42,11 @@ export default async function SearchPage({ searchParams }) {
                       <div className="relative aspect-[2/3]">
                         {movie.poster && <Image src={urlFor(movie.poster).url()} alt={`Poster for ${movie.title}`} fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover"/>}
                       </div>
-                      <div className="p-3"><h4 className="font-semibold truncate">{movie.title}</h4><p className="text-sm text-gray-400">{movie.releaseYear}</p></div>
                     </Link>
+                    <div className="p-3">
+                      <Link href={`/movies/${movie.slug}`}><h4 className="font-semibold truncate hover:text-yellow-400">{movie.title}</h4></Link>
+                      <Link href={`/year/${movie.releaseYear}`}><p className="text-sm text-gray-400 hover:text-white">{movie.releaseYear}</p></Link>
+                    </div>
                   </div>
                 ))}
               </div>

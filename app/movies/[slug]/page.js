@@ -14,7 +14,6 @@ function urlFor(source) {
 }
 
 async function getMovie(slug) {
-  // eslint-disable-next-line react/no-unescaped-entities
   const query = `*[_type == "movie" && slug.current == $slug][0]{_id, title, releaseYear, poster, plot, "slug": slug.current, affiliateLink, gallery, averageRating, ratingCount, directors[]->{name, "slug": slug.current, photo}, genres[]->{name, "slug": slug.current}, actors[]->{name, "slug": slug.current, photo}}`
   const movie = await client.fetch(query, { slug })
   return movie
@@ -31,13 +30,7 @@ export default async function MoviePage({ params }) {
           <div className="md:col-span-1">
             {movie.poster ? (
               <div className="relative aspect-[2/3]">
-                <Image
-                  src={urlFor(movie.poster).url()}
-                  alt={`Poster for ${movie.title}`}
-                  fill
-                  sizes="100vw"
-                  className="rounded-lg shadow-lg object-cover"
-                />
+                <Image src={urlFor(movie.poster).url()} alt={`Poster for ${movie.title}`} fill sizes="100vw" className="rounded-lg shadow-lg object-cover"/>
               </div>
             ) : (
               <div className="w-full h-full bg-gray-800 rounded-lg flex items-center justify-center"><span>No Poster</span></div>
@@ -46,7 +39,7 @@ export default async function MoviePage({ params }) {
           </div>
           <div className="md:col-span-2">
             <h1 className="text-4xl lg:text-5xl font-extrabold text-yellow-400 mb-2">{movie.title}</h1>
-            <p className="text-xl text-gray-400 mb-6">{movie.releaseYear}</p>
+            <Link href={`/year/${movie.releaseYear}`}><p className="text-xl text-gray-400 mb-6 hover:text-white">{movie.releaseYear}</p></Link>
             <VotingSystem movieId={movie._id} initialAverage={movie.averageRating || 0} initialCount={movie.ratingCount || 0} />
             {movie.directors && movie.directors.length > 0 && (
               <div className="mb-4">

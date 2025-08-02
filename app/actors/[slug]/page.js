@@ -11,7 +11,6 @@ function urlFor(source) {
 }
 
 async function getActorData(slug) {
-  // eslint-disable-next-line react/no-unescaped-entities
   const query = `*[_type == "actor" && slug.current == $slug][0]{name, photo, biography, "movies": *[_type == "movie" && references(^._id)] | order(releaseYear desc) {_id, title, "slug": slug.current, poster, releaseYear}}`
   const data = await client.fetch(query, { slug })
   return data
@@ -41,8 +40,11 @@ export default async function ActorPage({ params }) {
                 <div className="relative aspect-[2/3]">
                   {movie.poster && <Image src={urlFor(movie.poster).url()} alt={`Poster for ${movie.title}`} fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover"/>}
                 </div>
-                <div className="p-4"><h2 className="text-xl font-semibold truncate">{movie.title}</h2><p className="text-gray-400">{movie.releaseYear}</p></div>
               </Link>
+              <div className="p-4">
+                <Link href={`/movies/${movie.slug}`}><h2 className="text-xl font-semibold truncate hover:text-yellow-400">{movie.title}</h2></Link>
+                <Link href={`/year/${movie.releaseYear}`}><p className="text-gray-400 hover:text-white">{movie.releaseYear}</p></Link>
+              </div>
             </div>
           ))}
         </div>

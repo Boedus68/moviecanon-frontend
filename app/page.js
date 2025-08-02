@@ -3,7 +3,7 @@ import { client } from '@/lib/sanity.client'
 import imageUrlBuilder from '@sanity/image-url'
 import Link from 'next/link'
 import SearchBar from '@/components/SearchBar'
-import Image from 'next/image' // Importa il componente Image
+import Image from 'next/image'
 
 const builder = imageUrlBuilder(client)
 function urlFor(source) {
@@ -91,11 +91,11 @@ export default async function HomePage({ searchParams }) {
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h2 className="text-lg font-semibold truncate">{movie.title}</h2>
-                  <p className="text-gray-400">{movie.releaseYear}</p>
-                </div>
               </Link>
+              <div className="p-4">
+                <Link href={`/movies/${movie.slug}`}><h2 className="text-lg font-semibold truncate hover:text-yellow-400">{movie.title}</h2></Link>
+                <Link href={`/year/${movie.releaseYear}`}><p className="text-gray-400 hover:text-white">{movie.releaseYear}</p></Link>
+              </div>
             </div>
           ))}
         </div>
